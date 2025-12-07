@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "64319434208",
+    "project_id": "post-boy-ab146",
+    "storage_bucket": "post-boy-ab146.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:64319434208:android:b4e602bb35a0ea34f6cf85",
+        "android_client_info": {
+          "package_name": "com.hulia.postboy.postboy"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "64319434208-obgeapibbio6prn5jfsmlbthv2lgjetc.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAt0w_07pyy76v5AFf2agYaJ-DnsAKW6WQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "64319434208-obgeapibbio6prn5jfsmlbthv2lgjetc.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "64319434208-55t4t4am7htv6gcr0a9qim8haqljejvm.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.hulia.postboy.postboy"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
