@@ -1,3 +1,4 @@
+// request_view.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -18,7 +19,6 @@ class RequestView extends StatefulWidget {
 class _RequestViewState extends State<RequestView> {
   bool showForm = true;
   dynamic jsonData;
-
   int responseStatus = 200;
   Map<String, String>? responseHeaders;
   late BannerAd _bannerAd;
@@ -29,6 +29,7 @@ class _RequestViewState extends State<RequestView> {
     super.initState();
     _loadBannerAd();
   }
+
   void _loadBannerAd() {
     _bannerAd = BannerAd(
       adUnitId: 'ca-app-pub-2109400871305297/4299718563',
@@ -56,13 +57,17 @@ class _RequestViewState extends State<RequestView> {
           ),
         ],
       ),
-      body: ListView(
-        children: [
-          if (showForm) RequestForm(bloc: bloc),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (showForm)
+              RequestForm(bloc: bloc,isPro: widget.isPro,), // Your existing form
 
-          // Listen to RequestBloc for response updates
-          Expanded(
-            child: BlocConsumer<RequestBloc, RequestState>(
+            const SizedBox(height: 20),
+
+            BlocConsumer<RequestBloc, RequestState>(
               listener: (context, state) {
                 if (state is RequestSent) {
                   setState(() {
@@ -77,12 +82,11 @@ class _RequestViewState extends State<RequestView> {
                 }
               },
               builder: (context, state) {
-                // Show a loading indicator while sending
                 if (state is RequestLoading) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                if (jsonData!=null) {
+                if (jsonData != null) {
                   return ResponsePanel(
                     body: jsonData,
                     statusCode: responseStatus,
@@ -90,22 +94,26 @@ class _RequestViewState extends State<RequestView> {
                   );
                 }
 
-                return const SizedBox.shrink();
+                return const Center(
+                  child: Text(
+                    'No response yet',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                );
               },
             ),
-          ),
-        ],
-      ),
-      bottomNavigationBar: _isBannerAdReady
-    ? (!widget.isPro
-    ? SizedBox(
-    height: _bannerAd.size.height.toDouble(),
-    width: _bannerAd.size.width.toDouble(),
-    child: AdWidget(ad: _bannerAd),
-    )
-        : const SizedBox.shrink())
-    : null,
 
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+      bottomNavigationBar: _isBannerAdReady && !widget.isPro
+          ? SizedBox(
+        height: _bannerAd.size.height.toDouble(),
+        width: _bannerAd.size.width.toDouble(),
+        child: AdWidget(ad: _bannerAd),
+      )
+          : null,
     );
   }
 }

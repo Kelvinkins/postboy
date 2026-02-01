@@ -5,13 +5,15 @@ import '../../../core/models/environment.dart';
 import '../../../data/request_repository.dart';
 import '../bloc/request_bloc.dart';
 import '../bloc/request_event.dart';
-import '../bloc/request_state.dart';
 import '../../../core/db/database_helper.dart';
+import '../bloc/request_state.dart';
 import 'json_editor.dart';
 
 class RequestForm extends StatefulWidget {
   final RequestBloc bloc;
-  const RequestForm({super.key, required this.bloc});
+  final bool isPro;
+
+  const RequestForm({super.key, required this.bloc, required this.isPro});
 
   @override
   State<RequestForm> createState() => _RequestFormState();
@@ -31,7 +33,6 @@ class _RequestFormState extends State<RequestForm> {
   final _customHeaderKeyCtrl = TextEditingController();
   final _customHeaderValueCtrl = TextEditingController();
 
-  // Content-Type UI
   final List<String> _contentTypeOptions = [
     'application/json',
     'application/x-www-form-urlencoded',
@@ -76,19 +77,19 @@ class _RequestFormState extends State<RequestForm> {
     final headers = await _buildHeaders(isPro);
 
     final req = ApiRequest(
-      name: _nameCtrl.text.trim(),
-      url: _urlCtrl.text.trim(),
-      method: _method,
-      headers: headers != null ? jsonEncode(headers) : null,
-      body: _bodyCtrl.text.isNotEmpty ? _bodyCtrl.text : null,
-      environmentId: _selectedEnvironmentId,
-      authType: _authType,
-      username: _usernameCtrl.text,
-      password: _passwordCtrl.text,
-      token: _tokenCtrl.text,
-      customHeaderKey: _customHeaderKeyCtrl.text,
-      customHeaderValue: _customHeaderValueCtrl.text,
-      contentType: ""
+        name: _nameCtrl.text.trim(),
+        url: _urlCtrl.text.trim(),
+        method: _method,
+        headers: headers != null ? jsonEncode(headers) : null,
+        body: _bodyCtrl.text.isNotEmpty ? _bodyCtrl.text : null,
+        environmentId: _selectedEnvironmentId,
+        authType: _authType,
+        username: _usernameCtrl.text,
+        password: _passwordCtrl.text,
+        token: _tokenCtrl.text,
+        customHeaderKey: _customHeaderKeyCtrl.text,
+        customHeaderValue: _customHeaderValueCtrl.text,
+        contentType: ""
     );
 
     widget.bloc.add(AddRequest(req));
@@ -107,7 +108,6 @@ class _RequestFormState extends State<RequestForm> {
       headers = _buildHeadersFromDropdown();
     }
 
-    // Merge Content-Type from the UI (dropdown/custom) into headers always if present.
     final contentTypeValue = _contentType == 'Custom'
         ? _customContentTypeCtrl.text.trim()
         : _contentType;
@@ -146,9 +146,6 @@ class _RequestFormState extends State<RequestForm> {
         break;
     }
 
-    // NOTE: we do NOT rely on environment to provide content-type in this Option C implementation.
-    // Content-Type from the UI dropdown will be merged by the caller (_buildHeaders).
-
     return headers.isEmpty ? null : headers;
   }
 
@@ -173,7 +170,6 @@ class _RequestFormState extends State<RequestForm> {
         break;
     }
 
-    // Content-Type is merged by the caller to ensure environments (isPro) also get it.
     return headers.isEmpty ? null : headers;
   }
 
@@ -185,7 +181,6 @@ class _RequestFormState extends State<RequestForm> {
     _customHeaderValueCtrl.clear();
     _authType = "None";
 
-    // Reset content-type UI
     _contentType = 'application/json';
     _customContentTypeCtrl.clear();
 
@@ -193,7 +188,6 @@ class _RequestFormState extends State<RequestForm> {
 
     final headers = jsonDecode(headersJson) as Map<String, dynamic>;
 
-    // Authentication parsing
     if (headers.containsKey("Authorization")) {
       final auth = headers["Authorization"] as String;
       if (auth.startsWith("Basic ")) {
@@ -213,7 +207,6 @@ class _RequestFormState extends State<RequestForm> {
       _customHeaderValueCtrl.text = headers[key].toString();
     }
 
-    // Content-Type parsing
     if (headers.containsKey("Content-Type")) {
       final ct = headers["Content-Type"].toString();
       if (_contentTypeOptions.contains(ct)) {
@@ -329,185 +322,170 @@ class _RequestFormState extends State<RequestForm> {
 
   @override
   Widget build(BuildContext context) {
-    final args =
-    ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
-    final isPro = args?['isPro'] ?? false;
+    final isPro = widget.isPro;
 
-    return Card(
-      margin: const EdgeInsets.all(12),
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            TextField(
-              controller: _nameCtrl,
-              decoration: _inputDecoration(
-                'Request Name',
-                suffix: IconButton(
-                  icon: const Icon(Icons.history),
-                  onPressed: _openHistory,
+    return Column(
+      children: [
+        Card(
+          margin: const EdgeInsets.all(12),
+          elevation: 0,
+          shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                TextField(
+                  controller: _nameCtrl,
+                  decoration: _inputDecoration(
+                    'Request Name',
+                    suffix: IconButton(
+                      icon: const Icon(Icons.history),
+                      onPressed: _openHistory,
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              value: _method,
-              decoration: _inputDecoration('Method'),
-              items: ['GET', 'POST', 'PUT', 'DELETE']
-                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                  .toList(),
-              onChanged: (v) => setState(() => _method = v!),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _urlCtrl,
-              decoration: _inputDecoration('URL'),
-            ),
-            const SizedBox(height: 12),
-            isPro
-                ? DropdownButtonFormField<int>(
-              value: _selectedEnvironmentId,
-              decoration: _inputDecoration("Environment"),
-              items: [
-                // existing environments
-                ..._environments
-                    .map((c) => DropdownMenuItem(
-                  value: c['id'] as int,
-                  child: Text(c['name'] as String),
-                ))
-                    .toList(),
-                // "Add New Environment" option
-                const DropdownMenuItem(
-                  value: -1, // special value for "add new"
-                  child: Text("+ Add New Environment",
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blue)),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: _method,
+                  decoration: _inputDecoration('Method'),
+                  items: ['GET', 'POST', 'PUT', 'DELETE']
+                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                      .toList(),
+                  onChanged: (v) => setState(() => _method = v!),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _urlCtrl,
+                  decoration: _inputDecoration('URL'),
+                ),
+                const SizedBox(height: 12),
+                // Authentication / Environment
+                isPro
+                    ? DropdownButtonFormField<int>(
+                  value: _selectedEnvironmentId,
+                  decoration: _inputDecoration("Environment"),
+                  items: [
+                    ..._environments
+                        .map((c) => DropdownMenuItem(
+                      value: c['id'] as int,
+                      child: Text(c['name'] as String),
+                    ))
+                        .toList(),
+                    const DropdownMenuItem(
+                      value: -1,
+                      child: Text("+ Add New Environment",
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue)),
+                    ),
+                  ],
+                  onChanged: (v) async {
+                    if (v == -1) {
+                      Navigator.pushNamed(context, "/environments")
+                          .then((_) => _loadEnvironments());
+                      return;
+                    }
+                    setState(() => _selectedEnvironmentId = v);
+                    if (v != null &&
+                        (_nameCtrl.text.isEmpty &&
+                            _urlCtrl.text.isEmpty ||
+                            _authType == 'None')) {
+                      final e = await repo.getById(v);
+                      final env = e?.toJson();
+                      if (env != null) _loadAuthFromHeaders(env['auth'] as String?);
+                      setState(() {});
+                    }
+                  },
+                )
+                    : DropdownButtonFormField<String>(
+                  value: _authType,
+                  decoration: _inputDecoration("Authentication"),
+                  items: ["None", "Basic", "Bearer Token", "Custom Header"]
+                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                      .toList(),
+                  onChanged: (v) => setState(() => _authType = v!),
+                ),
+                if (_authType == "Basic") ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _usernameCtrl,
+                    decoration: _inputDecoration('Username'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _passwordCtrl,
+                    decoration: _inputDecoration('Password'),
+                    obscureText: true,
+                  ),
+                ],
+                if (_authType == "Bearer Token") ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _tokenCtrl,
+                    decoration: _inputDecoration('Bearer Token'),
+                  ),
+                ],
+                if (_authType == "Custom Header") ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _customHeaderKeyCtrl,
+                    decoration: _inputDecoration('Header Key'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _customHeaderValueCtrl,
+                    decoration: _inputDecoration('Header Value'),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                if (isPro)
+                  DropdownButtonFormField<String>(
+                    value: _contentType,
+                    decoration: _inputDecoration("Content-Type"),
+                    items: _contentTypeOptions
+                        .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                        .toList(),
+                    onChanged: (v) => setState(() => _contentType = v!),
+                  ),
+                if (_contentType == 'Custom') ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _customContentTypeCtrl,
+                    decoration: _inputDecoration(
+                        'Custom Content-Type (e.g. application/vnd.api+json)'),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                JsonEditorField(controller: _bodyCtrl),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : () => _sendAndSave(isPro),
+                    style: ElevatedButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                        : const Text('Send Request'),
+                  ),
                 ),
               ],
-              onChanged: (v) async {
-                if (v == -1) {
-                  // Navigate to add environment page
-                  Navigator.pushNamed(context, "/environments")
-                      .then((_) {
-                    // reload environments after returning
-                    _loadEnvironments();
-                  });
-
-                  // reset selection to previous or null
-                  setState(() {});
-                  return;
-                }
-
-                setState(() => _selectedEnvironmentId = v);
-
-                if (v != null &&
-                    (_nameCtrl.text.isEmpty &&
-                        _urlCtrl.text.isEmpty ||
-                        _authType == 'None')) {
-                  final e = await repo.getById(v);
-                  final env = e?.toJson();
-                  if (env != null) _loadAuthFromHeaders(env['auth'] as String?);
-                  setState(() {});
-                }
-              },
-            )
-                : DropdownButtonFormField<String>(
-              value: _authType,
-              decoration: _inputDecoration("Authentication"),
-              items: ["None", "Basic", "Bearer Token", "Custom Header"]
-                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                  .toList(),
-              onChanged: (v) => setState(() => _authType = v!),
             ),
-
-            if (_authType == "Basic") ...[
-              const SizedBox(height: 12),
-              TextField(
-                controller: _usernameCtrl,
-                decoration: _inputDecoration('Username'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _passwordCtrl,
-                decoration: _inputDecoration('Password'),
-                obscureText: true,
-              ),
-            ],
-            if (_authType == "Bearer Token") ...[
-              const SizedBox(height: 12),
-              TextField(
-                controller: _tokenCtrl,
-                decoration: _inputDecoration('Bearer Token'),
-              ),
-            ],
-            if (_authType == "Custom Header") ...[
-              const SizedBox(height: 12),
-              TextField(
-                controller: _customHeaderKeyCtrl,
-                decoration: _inputDecoration('Header Key'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _customHeaderValueCtrl,
-                decoration: _inputDecoration('Header Value'),
-              ),
-            ],
-
-            const SizedBox(height: 16),
-
-            if(isPro)
-            // Content-Type dropdown + custom field
-            DropdownButtonFormField<String>(
-              value: _contentType,
-              decoration: _inputDecoration("Content-Type"),
-              items: _contentTypeOptions
-                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                  .toList(),
-              onChanged: (v) => setState(() => _contentType = v!),
-            ),
-            if (_contentType == 'Custom') ...[
-              const SizedBox(height: 12),
-              TextField(
-                controller: _customContentTypeCtrl,
-                decoration: _inputDecoration('Custom Content-Type (e.g. application/vnd.api+json)'),
-              ),
-            ],
-
-            const SizedBox(height: 16),
-            JsonEditorField(controller: _bodyCtrl),
-
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  if (!_isLoading) {
-                    _sendAndSave(isPro);
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: _isLoading
-                    ? const SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-                    : const Text('Send'),
-              ),
-            ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }
